@@ -1,0 +1,89 @@
+Sub ExtractSpouseNamesWithDocID()
+    Dim wsSource As Worksheet
+    Dim wsDest As Worksheet
+    Dim lastRow As Long, destRow As Long
+    Dim i As Long
+    Dim sourceName As String
+    Dim fullName As String
+    Dim docID As String
+    Dim spouseName As String
+    Dim namePart As String
+    Dim separatorPos As Long
+    Dim headerFound As Boolean
+    Dim columnHeader As String
+
+    ' Define source and destination worksheets
+    Set wsSource = ThisWorkbook.Sheets("export-result") ' Adjust if needed
+    Set wsDest = ThisWorkbook.Sheets.Add
+    wsDest.name = "SpouseNames"
+
+    ' Set up destination sheet headers
+    wsDest.Cells(1, 1).Value = "Doc ID"
+    wsDest.Cells(1, 2).Value = "Spouse of Subscriber Name"
+    
+    ' Find the last row in the source sheet
+    lastRow = wsSource.Cells(wsSource.Rows.Count, 1).End(xlUp).row
+    
+    ' Initialize the destination row counter
+    destRow = 2
+    
+    ' Process each row in the source data
+    For i = 2 To lastRow
+        ' Get the Source.Name (Doc ID)
+        sourceName = wsSource.Cells(i, 1).Value ' Column A
+        fullName = wsSource.Cells(i, 2).Value ' Column B
+        
+        ' Extract the Doc ID from Source.Name
+        If InStr(sourceName, ".PDF") > 0 Then
+            docID = Trim(Left(sourceName, InStr(sourceName, ".PDF") + 3)) ' Includes ".PDF"
+        Else
+            docID = "Not Found" ' Fallback if ".PDF" is not found
+        End If
+
+        ' Extract the spouse's name based on headers
+        If InStr(fullName, "Spouse of Subscriber") > 0 Or InStr(fullName, "SpouseofSubscriber") > 0 Then
+            ' Find the position of the header
+            If InStr(fullName, "Spouse of Subscriber") > 0 Then
+                separatorPos = InStr(fullName, "Spouse of Subscriber")
+            Else
+                separatorPos = InStr(fullName, "SpouseofSubscriber")
+            End If
+            
+            ' Extract the name part before the header
+            If separatorPos > 0 Then
+                namePart = Trim(Left(fullName, separatorPos - 1))
+                
+                ' Clean up name (capitalize first letters)
+                spouseName = FormatName(namePart)
+                
+                ' Write the Doc ID and formatted name to the destination sheet
+                wsDest.Cells(destRow, 1).Value = docID
+                wsDest.Cells(destRow, 2).Value = spouseName
+                destRow = destRow + 1
+            End If
+        End If
+    Next i
+    
+    MsgBox "Spouse names extraction complete!", vbInformation
+End Sub
+
+Function FormatName(name As String) As String
+    Dim words() As String
+    Dim i As Integer
+    
+    ' Split the name into individual words
+    words = Split(name, " ")
+    
+    ' Capitalize the first letter of each word
+    For i = LBound(words) To UBound(words)
+        If Len(words(i)) > 1 Then
+            words(i) = UCase(Left(words(i), 1)) & LCase(Mid(words(i), 2))
+        Else
+            words(i) = UCase(words(i))
+        End If
+    Next i
+    
+    ' Join the words back into a single string
+    FormatName = Join(words, " ")
+End Function
+

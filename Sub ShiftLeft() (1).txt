@@ -1,0 +1,61 @@
+Sub ShiftLeft()
+
+    Dim wsSource    As Worksheet
+ 
+    Dim lastCol     As Long
+    Dim lastRow     As Long
+    Dim col         As Integer
+    Dim row         As Integer
+    Dim i           As Integer
+    Dim j           As Integer
+   
+    ' Define source and destination worksheets
+    Set wsSource = ThisWorkbook.Sheets("export-result")
+   
+ 
+    ' Find the last row in the source sheet
+    lastRow = wsSource.Cells(wsSource.Rows.Count, 1).End(xlUp).row
+    lastCol = wsSource.Cells(1, wsSource.Columns.Count).End(xlToLeft).Column
+   
+
+    Dim DirArray As Variant
+    Dim ShiftedArray As Variant
+   
+    For row = 2 To lastRow
+   
+        DirArray = Application.Transpose(Range(Cells(row, 2), Cells(row, lastCol)))
+        ReDim ShiftedArray(1 To UBound(DirArray), 1 To 1) As Variant
+       
+        j = 1
+        For i = 1 To UBound(DirArray)
+            If DirArray(i, 1) <> vbNullString Then
+                ShiftedArray(j, 1) = DirArray(i, 1)
+                j = j + 1
+            End If
+        Next i
+       
+       
+        For col = LBound(ShiftedArray) To UBound(ShiftedArray)
+            'populate the range with the data
+            If ShiftedArray(col, 1) <> vbNullString Then
+                ' check if the value has a leading equal(=) sign, e.g. function
+                If Mid(ShiftedArray(col, 1), 1, 1) = "=" Then
+                    Cells(row, col + 1).Value = "'" + ShiftedArray(col, 1)
+                Else
+                    Cells(row, col + 1).Value = ShiftedArray(col, 1)
+                End If
+            Else
+                Cells(row, col + 1).Value = ShiftedArray(col, 1)
+            End If
+        Next col
+
+        ' clear array contents
+        Erase DirArray
+        Erase ShiftedArray
+       
+    Next row
+ 
+
+End Sub
+
+

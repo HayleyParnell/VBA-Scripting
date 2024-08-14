@@ -1,0 +1,191 @@
+Sub ExtractAndOrganizeDataByDocID_3()
+    Dim wsSource As Worksheet
+    Dim wsDest As Worksheet
+    Dim dict As Object
+    Dim lastRow As Long, destRow As Long
+    Dim i As Long
+    Dim docID As Variant
+    Dim colSourceName As Long
+    Dim colPrimaryKey As Long
+    Dim colPrimaryValue As Long
+    Dim colSecondaryKey As Long
+    Dim colSecondaryValue As Long
+    Dim primaryKeys As Object
+    Dim secondaryKeys As Object
+    Dim key As Variant
+    Dim keyValue As String
+
+    ' Define source and destination worksheets
+    Set wsSource = ThisWorkbook.Sheets("export-result")
+    Set wsDest = ThisWorkbook.Sheets.Add
+    wsDest.name = "OrganizedData_4"
+
+    ' Create a dictionary to hold data
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    ' Find the last row in the source sheet
+    lastRow = wsSource.Cells(wsSource.Rows.Count, 1).End(xlUp).row
+
+    ' Set up destination sheet headers
+    wsDest.Cells(1, 1).Value = "Doc ID"
+    wsDest.Cells(1, 2).Value = "Spouse Name of Subscriber" ' New header for the inserted column
+    wsDest.Cells(1, 3).Value = "Member ID"
+    wsDest.Cells(1, 4).Value = "DOB"
+    wsDest.Cells(1, 5).Value = "Date of Service"
+    wsDest.Cells(1, 6).Value = "Requesting Provider"
+    wsDest.Cells(1, 7).Value = "Group Number"
+    wsDest.Cells(1, 8).Value = "Subscriber"
+
+    ' Define column indices based on provided headers
+    colSourceName = 1        ' Unique ID in Column A
+    colPrimaryKey = 2        ' Primary key types in Column B
+    colPrimaryValue = 3      ' Primary key values in Column C
+    colSecondaryKey = 4      ' Secondary key types in Column D
+    colSecondaryValue = 5    ' Secondary key values in Column E
+
+    ' Process each row in the source data
+    For i = 2 To lastRow
+        ' Get the unique ID and the primary and secondary key-value pairs
+        docID = Trim(wsSource.Cells(i, colSourceName).Value)
+        
+        ' Ensure docID is not empty
+        If docID = "" Then GoTo SkipRow
+
+        ' Initialize primary and secondary key-value dictionaries if they don't exist
+        If Not dict.Exists(docID) Then
+            ' Create dictionaries to store values for each field of interest
+            Set primaryKeys = CreateObject("Scripting.Dictionary")
+            primaryKeys.Add "MEMBER ID", ""
+            primaryKeys.Add "DOB", ""
+            primaryKeys.Add "DATE OF SERVICE", ""
+            primaryKeys.Add "REQUESTING PROVIDER", ""
+            primaryKeys.Add "GROUP NUMBER", ""
+
+            Set secondaryKeys = CreateObject("Scripting.Dictionary")
+            secondaryKeys.Add "SUBSCRIBER", ""
+            secondaryKeys.Add "MEMBER ID", ""
+
+            dict.Add docID, Array(primaryKeys, secondaryKeys)
+        End If
+
+        ' Retrieve existing dictionaries
+        Set primaryKeys = dict(docID)(0)
+        Set secondaryKeys = dict(docID)(1)
+
+        ' Update primary key values
+        Select Case Trim(wsSource.Cells(i, colPrimaryKey).Value)
+            Case "MEMBER ID"
+                keyValue = CStr(wsSource.Cells(i, colPrimaryValue).Value)
+                primaryKeys("MEMBER ID") = ConcatenateWithDelimiter(primaryKeys("MEMBER ID"), keyValue, ";")
+            Case "DOB"
+                keyValue = CStr(wsSource.Cells(i, colPrimaryValue).Value)
+                primaryKeys("DOB") = ConcatenateWithDelimiter(primaryKeys("DOB"), keyValue, ";")
+            Case "DATE OF SERVICE"
+                keyValue = CStr(wsSource.Cells(i, colPrimaryValue).Value)
+                primaryKeys("DATE OF SERVICE") = ConcatenateWithDelimiter(primaryKeys("DATE OF SERVICE"), keyValue, ";")
+            Case "REQUESTING PROVIDER"
+                keyValue = CStr(wsSource.Cells(i, colPrimaryValue).Value)
+                primaryKeys("REQUESTING PROVIDER") = ConcatenateWithDelimiter(primaryKeys("REQUESTING PROVIDER"), keyValue, ";")
+            Case "GROUP NUMBER"
+                keyValue = CStr(wsSource.Cells(i, colPrimaryValue).Value)
+                primaryKeys("GROUP NUMBER") = ConcatenateWithDelimiter(primaryKeys("GROUP NUMBER"), keyValue, ";")
+        End Select
+
+        ' Update secondary key values
+        Select Case Trim(wsSource.Cells(i, colSecondaryKey).Value)
+            Case "SUBSCRIBER"
+                keyValue = CStr(wsSource.Cells(i, colSecondaryValue).Value)
+                secondaryKeys("SUBSCRIBER") = ConcatenateWithDelimiter(secondaryKeys("SUBSCRIBER"), keyValue, ";")
+            Case "MEMBER ID"
+                keyValue = CStr(wsSource.Cells(i, colSecondaryValue).Value)
+                secondaryKeys("MEMBER ID") = ConcatenateWithDelimiter(secondaryKeys("MEMBER ID"), keyValue, ";")
+        End Select
+
+        ' Update the dictionary with the aggregated data
+        dict(docID) = Array(primaryKeys, secondaryKeys)
+
+SkipRow:
+    Next i
+
+    ' Write data to the destination sheet
+    destRow = 2
+    For Each docID In dict.Keys
+        wsDest.Cells(destRow, 1).Value = docID
+        Set primaryKeys = dict(docID)(0)
+        Set secondaryKeys = dict(docID)(1)
+
+        ' Write primary key values
+        wsDest.Cells(destRow, 3).Value = primaryKeys("MEMBER ID")
+        wsDest.Cells(destRow, 4).Value = primaryKeys("DOB")
+        wsDest.Cells(destRow, 5).Value = primaryKeys("DATE OF SERVICE")
+        wsDest.Cells(destRow, 6).Value = primaryKeys("REQUESTING PROVIDER")
+        wsDest.Cells(destRow, 7).Value = primaryKeys("GROUP NUMBER")
+
+        ' Write secondary key values
+        wsDest.Cells(destRow, 8).Value = secondaryKeys("SUBSCRIBER")
+        wsDest.Cells(destRow, 9).Value = secondaryKeys("MEMBER ID")
+
+        destRow = destRow + 1
+    Next docID
+
+    MsgBox "Data extraction and organization complete!", vbInformation
+End Sub
+
+Function ConcatenateWithDelimiter(existingValue As String, newValue As String, delimiter As String) As String
+    ' Concatenate existingValue and newValue with the specified delimiter
+    If existingValue <> "" Then
+        ConcatenateWithDelimiter = existingValue & delimiter & newValue
+    Else
+        ConcatenateWithDelimiter = newValue
+    End If
+End Function
+
+Sub InsertSingleColumn(sheetName As String, columnLetter As String)
+    ' Insert a new column with the given letter
+    ThisWorkbook.Sheets(sheetName).Columns(columnLetter).Insert Shift:=xlToRight
+    ThisWorkbook.Sheets(sheetName).Cells(1, Columns(columnLetter).Column).Value = "Spouse Name of Subscriber"
+End Sub
+
+Sub PopulateSourceNameOfSubscriber()
+
+    Dim lastRow As Long
+    Dim lastCol As Long
+    Dim row     As Integer
+    Dim cellRange    As Range
+    Dim docID   As String
+    Dim spouseName As String
+    Dim wsSource As Worksheet
+    Dim wsDest As Worksheet
+    Set wsSource = ThisWorkbook.Sheets("SpouseNames")
+    Set wsDest = ThisWorkbook.Sheets("OrganizedData_4")
+
+    ' Find the last row in the source sheet
+    lastRow = wsSource.Cells(wsSource.Rows.Count, 1).End(xlUp).row
+    lastCol = wsSource.Cells(1, wsSource.Columns.Count).End(xlToLeft).Column
+   
+    'Call InsertSingleColumn(wsDest.name, "B")
+    
+    For row = 2 To lastRow
+        
+        docID = wsSource.Cells(row, 1).Value
+        spouseName = wsSource.Cells(row, 2).Value
+        
+        ' Find the row in destination sheet that matches docID
+        Set foundCell = wsDest.Columns(1).Find(What:=docID, LookIn:=xlValues, LookAt:=xlWhole)
+        
+        Set cellRange = Selection.Find(What:=docID, After:=ActiveCell, LookIn:=xlFormulas, _
+        LookAt:=xlWhole, SearchOrder:=xlByRows, SearchDirection:=xlNext, _
+        MatchCase:=False, SearchFormat:=False)
+
+        If Not foundCell Is Nothing Then
+            ' Write spouse name to the newly inserted column
+            wsDest.Cells(foundCell.row, 2).Value = spouseName
+        End If
+    
+    Next row
+    
+
+End Sub
+
+
+
